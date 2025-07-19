@@ -1,0 +1,122 @@
+ CODE LISTINGS
+LoRa Tx Module
+#include <SoftwareSerial.h>
+#include <TinyGPSPlus.h>
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <SPI.h>
+#include <LoRa.h>
+// --- Pin Definitions ---
+#define BUZ 4
+#define LED 7
+#define IN_1 5
+#define IN_2 6
+// --- GPS Serial ---
+SoftwareSerial gpsSerial(3, 11); // GPS TX → Pin 3
+TinyGPSPlus gps;
+// --- LCD ---
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+// --- LoRa ---
+#define LORA_SS 10
+#define LORA_RST 9
+#define LORA_DIO0 2
+61
+// --- Variables ---
+float LATITUDE = 0.0;
+float LONGITUDE = 0.0;
+// --- Border Area: 9 Points (square/rectangle boundary) ---
+const int BORDER_POINTS = 9;
+float borderLat[BORDER_POINTS] = {
+ 11.042576, 11.042150, 11.041578,
+ 11.041592, 11.041699, 11.042132,
+ 11.042534, 11.042489, 11.042525
+};
+float borderLng[BORDER_POINTS] = {
+ 76.886655, 76.886588, 76.886540,
+ 76.885948, 76.885491, 76.885485,
+ 76.885547, 76.886128, 76.886457
+};
+// --- Point-in-Polygon Function (Ray Casting) ---
+bool isInsideBoundary(float lat, float lng) {
+ int i, j;
+ bool inside = false;
+ for (i = 0, j = BORDER_POINTS - 1; i < BORDER_POINTS; j = i++) {
+ if (((borderLat[i] > lat) != (borderLat[j] > lat)) &&
+ (lng < (borderLng[j] - borderLng[i]) * (lat - borderLat[i]) / (borderLat[j] -
+borderLat[i]) + borderLng[i])) {
+ inside = !inside;
+ }
+ }
+62
+ return inside;
+}
+void setup() {
+ Serial.begin(9600);
+ gpsSerial.begin(9600);
+ pinMode(BUZ, OUTPUT);
+ pinMode(LED, OUTPUT);
+ pinMode(IN_1, OUTPUT);
+ pinMode(IN_2, OUTPUT);
+ digitalWrite(BUZ, LOW);
+ digitalWrite(LED, LOW);
+ analogWrite(IN_1, 255);
+ analogWrite(IN_2, 0);
+ lcd.init();
+ lcd.backlight();
+ lcd.setCursor(0, 0);
+ lcd.print("MARITIME BORDER");
+ lcd.setCursor(0, 1);
+ lcd.print("SECURITY SYSTEM");
+ delay(2000);
+ lcd.clear();
+ LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+ if (!LoRa.begin(433E6)) {
+ Serial.println("LoRa init failed!");
+ while (1);
+63
+ }
+ Serial.println("LoRa TX Ready");
+}
+void loop() {
+ while (gpsSerial.available() > 0) {
+ gps.encode(gpsSerial.read());
+ if (gps.location.isUpdated()) {
+ LATITUDE = gps.location.lat();
+ LONGITUDE = gps.location.lng();
+ Serial.print("Latitude: ");
+ Serial.println(LATITUDE, 6);
+ Serial.print("Longitude: ");
+ Serial.println(LONGITUDE, 6);
+ lcd.clear();
+ lcd.setCursor(0, 0);
+ lcd.print("LAT:");
+ lcd.print(LATITUDE, 4);
+ lcd.setCursor(0, 1);
+ lcd.print("LNG:");
+ lcd.print(LONGITUDE, 4);
+ // --- Border Logic ---
+ if (!isInsideBoundary(LATITUDE, LONGITUDE)) {
+ digitalWrite(LED, HIGH);
+ digitalWrite(BUZ, HIGH);
+64
+ analogWrite(IN_1, 120); // Slow motor
+ analogWrite(IN_2, 0);
+ Serial.println("!! ALERT: OUTSIDE BORDER !!");
+ } else {
+ digitalWrite(LED, LOW);
+ digitalWrite(BUZ, LOW);
+ analogWrite(IN_1, 255); // Normal speed
+ analogWrite(IN_2, 0);
+ Serial.println("Within Safe Zone");
+ }
+ // Send GPS data over LoRa
+ String data = String(LATITUDE, 6) + "," + String(LONGITUDE, 6);
+ LoRa.beginPacket();
+ LoRa.print(data);
+ LoRa.endPacket();
+ Serial.print("Sent via LoRa: ");
+ Serial.println(data);
+ delay(3000);
+ }
+ }
+}

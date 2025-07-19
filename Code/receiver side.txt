@@ -1,0 +1,49 @@
+LoRa Rx Module
+#include <SPI.h>
+#include <LoRa.h>
+// --- LoRa Pins ---
+#define LORA_SS 10 // LoRa NSS Pin (Chip Select)
+#define LORA_RST 9 // LoRa RESET Pin
+#define LORA_DIO0 2 // LoRa DIO0 Pin
+void setup() {
+ // Initialize serial communication
+ Serial.begin(9600);
+ while (!Serial);
+ // Initialize LoRa
+ LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
+ if (!LoRa.begin(433E6)) { // Set frequency to 433 MHz (can be changed to 
+868E6 for 868 MHz)
+ Serial.println("LoRa initialization failed!");
+ while (1); // Stay here forever
+ }
+ Serial.println("LoRa Receiver Ready!");
+}
+void loop() {
+ // Check if data is available to receive
+ int packetSize = LoRa.parsePacket();
+ if (packetSize) {
+ String received = "";
+66
+ // Read all bytes from the LoRa packet
+ while (LoRa.available()) {
+ received += (char)LoRa.read();
+ }
+ // Print the received data to Serial Monitor
+ Serial.print("Received: ");
+ Serial.println(received);
+ // Split the received data (Latitude and Longitude)
+ int commaIndex = received.indexOf(',');
+ if (commaIndex > 0) {
+ String strA = received.substring(0, commaIndex);
+ String strB = received.substring(commaIndex + 1);
+ float latitude = strA.toFloat();
+ float longitude = strB.toFloat();
+ // Print the Latitude and Longitude
+ Serial.print("Latitude: ");
+ Serial.println(latitude, 6);
+ Serial.print("Longitude: ");
+ Serial.println(longitude, 6);
+ } else {
+ Serial.println("Invalid data format received");
+ }
+ }
