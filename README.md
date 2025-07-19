@@ -84,7 +84,7 @@ Transmitter (Boat) → [GPS] → [Arduino UNO] → [LoRa TX] → → → [LoRa R
 
 The full report contains detailed circuit diagrams, simulations, literature reviews, and testing results.
 
-[View Project Report (PDF)](./MARINE_final_end_one.pdf)
+[View Project Report (PDF)](report/MARINE_final_end_one.pdf)
 
 ---
 
@@ -119,5 +119,5 @@ This project is developed for academic and non-commercial purposes. Free to use,
 ## Contact
 
 For inquiries or project demos:
-- Selvanagarajan M — selvanagarajan.email@example.com
-- GitHub: [github.com/selvarajan-m](https://github.com/selvarajan-m)
+- Selvanagarajan M — selvanagarajan81gmail@com
+- GitHub: [github.com/Selvarajan-M](https://github.com/Selvarajan-M)
